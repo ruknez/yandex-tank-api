@@ -88,8 +88,20 @@ class TankWorker(object):
 
     @common.memoized
     def core(self):
-        print(self.__get_configs())
-        c = TankCore(self, self.__get_configs())
+        local_configs_list = \
+            itt.chain(
+                [core_console.load_core_base_cfg()]
+                if not self.ignore_machine_defaults else [],
+                self.__get_configs_from_dir('{}/yandex-tank/'.format(self.configs_location))
+                if not self.ignore_machine_defaults else []
+            )
+        user_configs_list = self.__get_configs_from_dir('.')
+        c = TankCore(
+            self,
+            self.__get_configs(),
+            local_configs=local_configs_list,
+            user_configs=user_configs_list,
+        )
         c.lock_dir = self.lock_dir
         c.__setattr__('__session_id', self.session_id)
         return c
