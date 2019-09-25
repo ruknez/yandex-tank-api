@@ -49,27 +49,21 @@ Status reported to HTTP Server (into webserver_queue):
     }
 """
 
-TEST_STAGE_ORDER_AND_DEPS = [
-    ('init', set()),
-    ('lock', 'init'),
-    ('configure', 'lock'),
-    ('prepare', 'configure'),
-    ('start', 'prepare'),
-    ('poll', 'start'),
-    ('end', 'lock'),
-    ('postprocess', 'end'),
-    ('unlock', 'lock'),
-    ('finished', set())
-]
+import functools
+
+TEST_STAGE_ORDER_AND_DEPS = [('init', set()), ('lock', 'init'),
+                             ('configure', 'lock'), ('prepare', 'configure'),
+                             ('start', 'prepare'), ('poll', 'start'),
+                             ('end', 'lock'), ('postprocess', 'end'),
+                             ('unlock', 'lock'), ('finished', set())]
 
 TEST_STAGE_ORDER = [stage for stage, _ in TEST_STAGE_ORDER_AND_DEPS]
-TEST_STAGE_DEPS = {stage:dep for stage, dep in TEST_STAGE_ORDER_AND_DEPS}
+TEST_STAGE_DEPS = {stage: dep for stage, dep in TEST_STAGE_ORDER_AND_DEPS}
 
 
-
-def is_A_earlier_than_B(stageA, stageB):
+def is_a_earlier_than_b(stage_a, stage_b):
     """Slow but reliable"""
-    return TEST_STAGE_ORDER.index(stageA) < TEST_STAGE_ORDER.index(stageB)
+    return TEST_STAGE_ORDER.index(stage_a) < TEST_STAGE_ORDER.index(stage_b)
 
 
 def get_valid_breaks():
@@ -78,3 +72,15 @@ def get_valid_breaks():
 
 def is_valid_break(brk):
     return brk in TEST_STAGE_ORDER
+
+
+def memoized(fn):
+    name = '__{}'.format(fn.__name__)
+
+    @functools.wraps(fn)
+    def fn_memoized(self):
+        if not hasattr(self, name):
+            setattr(self, name, fn(self))
+        return getattr(self, name)
+
+    return property(fn_memoized)

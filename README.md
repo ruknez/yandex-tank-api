@@ -2,6 +2,7 @@ Yandex.Tank API
 ===============
 
 This is an HTTP server that controls Yandex.Tank execution. It allows the client to:
+
 * set a breakpoint before an arbitrary test stage (and reset it later)
 * launch Yandex.Tank and begin the test
 * upload files into the test working directory
@@ -9,15 +10,23 @@ This is an HTTP server that controls Yandex.Tank execution. It allows the client
 * obtain the test status
 * download the artifacts in a safe manner, without interference to another tests
 
+Start API server
+----------------
+by running ```yandex-tank-api-server [options...]``` in console
+
+
 API-managed Tank
 ------------------
+
 General information on Yandex.Tank installation and usage can be found in its [documentation](http://yandextank.readthedocs.org).
 This section covers the difference between console Tank and API-managed Tank configuration and provides more details on the sequence of the test stages.
 
 ### Tank configuration
+
 API-managed Tank is configured via configuration files only. They have the same syntax and options as the console Tank configs.
 
 The configuration parameters are applied in the following order:
+
   1. common Yandex.Tank configuration files that reside in `/etc/yandex-tank/`
   2. Yandex.Tank API defaults in `/etc/yandex-tank-api/defaults`
   3. **the configuration file sent by the client when launching the test**
@@ -70,6 +79,7 @@ The last session status is temporarily stored after tank exit.
 The test artifacts are stored forever and should be deleted by external means when not needed.
 
 ### Pausing the test sequence
+
 When the session is started, the client can specify the test stage before which the test will be paused (the breakpoint) .
 After completing the stages preceding the breakpoint, the Tank will wait until the breakpoint is moved further. You cannot move the breakpoint back.
 
@@ -89,18 +99,38 @@ The client should check the session status to detect Tank failures.
 All handles, except for /artifact, return JSON. On errors this is a JSON object with a key 'reason'.
 
 ### List of API requests
-1. **POST /run?[test=...]&[break=...]**
 
-  Request body: Yandex.Tank config in .ini format (the same as for console Tank)
+1. **POST /validate**
+
+  Request body: Yandex.Tank config in .yaml format (the same as for console Tank)
+
+  Checks if config provided is valid within local defaults
+
+  Reply on success:     
+  ```javascript
+  {
+    "config": "<yaml string>", // your config
+    "errors": [] // empty if valid
+  }
+  ```
+
+  Error codes and corresponding reasons in the reply:
+
+  * 400, 'Config is not a valid YAML.'
+
+2. **POST /run?[test=...]&[break=...]**
+
+  Request body: Yandex.Tank config in .yaml format (the same as for console Tank)
 
   Creates a new session with an unique *session ID* and launches a new Tank worker.
 
   Parameters:
-    * test: Prefix of the session ID. Should be a valid directory name. *Default: current datetime in the %Y%m%d%H%M%S format*
-    * break: the test stage before which the tank will stop and wait until the next break is set. *Default: "finished"*
+
+  * test: Prefix of the session ID. Should be a valid directory name. *Default: current datetime in the %Y%m%d%H%M%S format*
+  * break: the test stage before which the tank will stop and wait until the next break is set. *Default: "finished"*
 
   Reply on success:     
-  ```json
+  ```javascript
   {
     "session": "20150625210015_0000000001", //ID of the launched session
     "test": "20150625210015_0000000001" //Deprecated, do not use
@@ -108,46 +138,52 @@ All handles, except for /artifact, return JSON. On errors this is a JSON object 
   ```
 
   Error codes and corresponding reasons in the reply:
-    * 400, 'Specified break is not a valid test stage name.'
-    * 409, 'The test with this ID is already running.'
-    * 409, 'The test with this ID has already finished.'
-    * 503, 'Another session is already running.'
 
-2. **GET /run?session=...&[break=...]**
+  * 400, 'Specified break is not a valid test stage name.'
+  * 409, 'The test with this ID is already running.'
+  * 409, 'The test with this ID has already finished.'
+  * 503, 'Another session is already running.'
+
+3. **GET /run?session=...&[break=...]**
 
   Sets a new break point for the running session.
 
   Parameters:
-    * session: session ID
-    * break: the test stage before which the tank will stop and wait until the next break is set. *Default: "finished"*
+
+  * session: session ID
+  * break: the test stage before which the tank will stop and wait until the next break is set. *Default: "finished"*
 
   Return codes and corresponding reasons:
-    * 200, 'Will try to set break before [new break point]'
-    * 400, 'Specified break is not a valid test stage name.'
-    * 404, 'No session with this ID.'
-    * 418, ... (returned when client tries to move the break point back)
-    * 500, 'Session failed.'
 
-3. **GET /stop?session=...**
+  * 200, 'Will try to set break before [new break point]'
+  * 400, 'Specified break is not a valid test stage name.'
+  * 404, 'No session with this ID.'
+  * 418, ... (returned when client tries to move the break point back)
+  * 500, 'Session failed.'
+
+4. **GET /stop?session=...**
 
   Terminates the current test.
 
   Parameters:
-    * session: ID of the session to terminate
+
+  * session: ID of the session to terminate
 
   Return codes and corresponding reasons:
-    * 200, 'Will try to stop tank process.'
-    * 404, 'No session with this ID.'
-    * 409, 'This session is already stopped.'
 
-4. **GET /status?session=...**
+  * 200, 'Will try to stop tank process.'
+  * 404, 'No session with this ID.'
+  * 409, 'This session is already stopped.'
+
+5. **GET /status?session=...**
 
   Returns the status of the specified session.
   Parameters:
-    * session: ID of the session.
+
+  * session: ID of the session.
 
   Status examples:
-  ```json
+  ```javascript
   {
     "status": "running",
     "stage_completed": true,
@@ -158,7 +194,7 @@ All handles, except for /artifact, return JSON. On errors this is a JSON object 
   }
   ```
 
-  ```json
+  ```javascript
   {
     "status": "failed", 
     "retcode": 1, 
@@ -176,48 +212,55 @@ All handles, except for /artifact, return JSON. On errors this is a JSON object 
   ```
 
   Error code and the corresponding reason:
-    * 404, 'No session with this ID.'
 
-5. **GET /status?**
+  * 404, 'No session with this ID.'
+
+6. **GET /status?**
 
   Returns a JSON object where keys are known session IDs and values are the corresponding statuses.
 
-6. **GET /artifact?session=...**
+7. **GET /artifact?session=...**
 
   Returns a JSON array of artifact filenames.
 
   Parameters:
-    * test: ID of the test
+
+  * test: ID of the test
 
   Error codes and the corresponding reasons:
-    * 404, 'No test with this ID found.'
-    * 404, 'Test was not performed, no artifacts.'
 
-7. **GET /artifact?session=...&filename=...**
+  * 404, 'No test with this ID found.'
+  * 404, 'Test was not performed, no artifacts.'
+
+8. **GET /artifact?session=...&filename=...**
 
   Sends the specified artifact file to the client.
 
   Parameters:
-    * session: ID of the session
-    * filename: the artifact file name
+
+  * session: ID of the session
+  * filename: the artifact file name
 
   Error codes and the corresponding reasons:
-    * 404, 'No session with this ID found'
-    * 404, 'Test was not performed, no artifacts.'
-    * 404, 'No such file'
-    * 503, 'File is too large and test is running' (when the file size exceeds 128 kB and some test is running)
 
-8. **POST /upload?session=...&filename=...**
+  * 404, 'No session with this ID found'
+  * 404, 'Test was not performed, no artifacts.'
+  * 404, 'No such file'
+  * 503, 'File is too large and test is running' (when the file size exceeds 128 kB and some test is running)
+
+9. **POST /upload?session=...&filename=...**
 
   Stores the request body on the server in the tank working directory for the session under the specified filename.
   The session should be running.
 
   Parameters:
-    * session: ID of the session
-    * filename: the name to store the file under
+
+  * session: ID of the session
+  * filename: the name to store the file under
 
   Error codes and the corresponding reasons:
-    * 404, 'Specified session is not running'
+
+  * 404, 'Specified session is not running'
 
 ### Writing plugins
 

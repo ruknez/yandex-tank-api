@@ -9,3 +9,5 @@ Thumbs.db
 /dist/
 /.idea/
 /.venv/
+/.eggs/
+venv/

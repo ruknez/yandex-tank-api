@@ -1,3 +1,7 @@
+import json
+import requests
+
+
 class TankAPIClient(object):
     def __init__(self, api_address, api_port=8888):
         self.api_address = api_address
@@ -7,8 +11,7 @@ class TankAPIClient(object):
         req = "http://{api_address}:{api_port}/run?break={breakpoint}".format(
             api_address=self.api_address,
             api_port=self.api_port,
-            breakpoint=breakpoint,
-        )
+            breakpoint=breakpoint, )
         if test_id:
             req += "&test=%s" % test_id
         resp = requests.post(req, data=config)
@@ -24,8 +27,7 @@ class TankAPIClient(object):
             api_address=self.api_address,
             api_port=self.api_port,
             breakpoint=breakpoint,
-            session=session_id,
-        )
+            session=session_id, )
         resp = requests.get(req)
         if resp.status_code == 200:
             data = json.loads(resp.text)
@@ -38,8 +40,7 @@ class TankAPIClient(object):
         req = "http://{api_address}:{api_port}/stop?session={session}".format(
             api_address=self.api_address,
             api_port=self.api_port,
-            session=session_id
-        )
+            session=session_id)
         resp = requests.get(req)
         if resp.status_code == 200:
             data = json.loads(resp.text)
@@ -50,10 +51,7 @@ class TankAPIClient(object):
 
     def list_artifacts(self, test_id):
         req = "http://{api_address}:{api_port}/artifact?test={test}".format(
-            api_address=self.api_address,
-            api_port=self.api_port,
-            test=test_id
-        )
+            api_address=self.api_address, api_port=self.api_port, test=test_id)
         resp = requests.get(req)
         if resp.status_code == 200:
             data = json.loads(resp.text)
@@ -67,8 +65,7 @@ class TankAPIClient(object):
             api_address=self.api_address,
             api_port=self.api_port,
             test=test_id,
-            filename=filename,
-        )
+            filename=filename, )
         resp = requests.get(req)
         if resp.status_code == 200:
             data = resp.text
@@ -80,8 +77,7 @@ class TankAPIClient(object):
     def status(self, session_id=None):
         req = "http://{api_address}:{api_port}/status".format(
             api_address=self.api_address,
-            api_port=self.api_port,
-        )
+            api_port=self.api_port, )
         if session_id:
             req += "?session=%s" % session_id
         resp = requests.get(req)

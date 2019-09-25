@@ -3,15 +3,9 @@
 Yandex.Tank HTTP API: request handling code
 """
 
+import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-try:
-    from pyjade.ext.tornado import patch_tornado
-    patch_tornado()
-    USE_JADE = True
-except:  # pylint: disable=W0702
-    USE_JADE = False
-
 import os.path
 import os
 import json
@@ -19,16 +13,17 @@ import uuid
 import multiprocessing
 import datetime
 import time
-import errno
-
+import yaml
 import yandex_tank_api.common as common
+from retrying import retry
+from yandextank.validator.validator import TankConfig
+from yandextank.core.consoleworker import load_core_base_cfg, load_local_base_cfgs
 
 TRANSFER_SIZE_LIMIT = 128 * 1024
 DEFAULT_HEARTBEAT_TIMEOUT = 600
 
 
 class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
-
     """
     Parent class for API handlers
     """
@@ -46,10 +41,7 @@ class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
         """
         Reply with a json and a specified code
         """
-        if status_code != 418:
-            self.set_status(status_code)
-        else:
-            self.set_status(status_code, 'I\'m a teapot!')
+        self.set_status(status_code)
         self.set_header('Content-Type', 'application/json')
         reply_str = json.dumps(reply, indent=4)
         self.finish(reply_str)
@@ -58,29 +50,53 @@ class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
         return self.reply_json(code, {'reason': reason})
 
     def write_error(self, status_code, **kwargs):
-        if self.settings.get("debug"):
+        if self.settings.get('debug'):
             tornado.web.RequestHandler(self, status_code, **kwargs)
             return
 
         self.set_header('Content-Type', 'application/json')
-        if 'exc_info' in kwargs and status_code >= 400 and status_code < 500:
-            self.reply_json(
-                status_code, {'reason': str(kwargs['exc_info'][1])})
+        if 'exc_info' in kwargs and 400 <= status_code < 500:
+            self.reply_json(status_code, {'reason': str(kwargs['exc_info'][1])})
         else:
             self.reply_json(status_code, {'reason': self._reason})
 
 
-class RunHandler(APIHandler):  # pylint: disable=R0904
+class ValidateConfgiHandler(APIHandler):  # pylint: disable=R0904
+    """
+    Handles POST /validate
+    """
 
+    def post(self):
+        config = self.request.body
+        try:
+            config = yaml.safe_load(config)
+            assert isinstance(config, dict), 'Config must be YAML dict'
+        except yaml.YAMLError:
+            self.reply_reason(400, 'Config is not a valid YAML')
+            return
+        except AssertionError as aexc:
+            self.reply_reason(400, repr(aexc))
+            return
+        _, errors = TankConfig(
+            [load_core_base_cfg()] + load_local_base_cfgs() + [config],
+            with_dynamic_options=False
+        ).validate()
+
+        self.reply_json(200, {'config': yaml.safe_dump(config), 'errors': errors})
+        return
+
+
+class RunHandler(APIHandler):  # pylint: disable=R0904
     """
     Handles POST /run and get /run
     """
 
     def post(self):
 
-        offered_test_id = self.get_argument("test", datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-        breakpoint = self.get_argument("break", "finished")
-        hb_timeout = self.get_argument("heartbeat", None)
+        offered_test_id = self.get_argument(
+            'test', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+        breakpoint = self.get_argument('break', 'finished')
+        hb_timeout = self.get_argument('heartbeat', None)
 
         config = self.request.body
 
@@ -94,10 +110,12 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         # 400 if invalid breakpoint
         if not common.is_valid_break(breakpoint):
             self.reply_json(
-                400,
-                {'reason': 'Specified break is not a valid test stage name.',
-                 'hint': {'breakpoints': common.get_valid_breaks()}}
-            )
+                400, {
+                    'reason': 'Specified break is not a valid test stage name.',
+                    'hint': {
+                        'breakpoints': common.get_valid_breaks()
+                    }
+                })
             return
         try:
             session_id = self.srv.create_session_dir(offered_test_id)
@@ -107,32 +125,34 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
 
         # Remember that such session exists
         self.srv.set_session_status(
-            session_id,
-            {'status': 'starting', 'break': breakpoint}
-        )
+            session_id, {'status': 'starting',
+                         'break': breakpoint})
         # Post run command to manager queue
-        self.srv.cmd({'session': session_id,
-                      'cmd': 'run',
-                      'break': breakpoint,
-                      'config': config})
+        self.srv.cmd({
+            'session': session_id,
+            'cmd': 'run',
+            'break': breakpoint,
+            'config': config
+        })
 
         self.srv.heartbeat(session_id, hb_timeout)
-        self.reply_json(200, {"session": session_id})
+        self.reply_json(200, {'session': session_id})
 
     def get(self):
-        breakpoint = self.get_argument("break", "finished")
-        session_id = self.get_argument("session")
-        hb_timeout = self.get_argument("heartbeat", None)
+        breakpoint = self.get_argument('break', 'finished')
+        session_id = self.get_argument('session')
+        hb_timeout = self.get_argument('heartbeat', None)
 
-        self.set_header("Content-type", "application/json")
+        self.set_header('Content-type', 'application/json')
 
         # 400 if invalid breakpoint
         if not common.is_valid_break(breakpoint):
             self.reply_json(
                 400, {
                     'reason': 'Specified break is not a valid test stage name.',
-                    'hint':
-                    {'breakpoints': common.get_valid_breaks()}
+                    'hint': {
+                        'breakpoints': common.get_valid_breaks()
+                    }
                 })
             return
 
@@ -143,40 +163,41 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             self.reply_reason(404, 'No session with this ID.')
             return
 
-	if session_id!=self.srv.running_id:
-            self.reply_reason(418,
-                "I'm a teapot! Can't set break for session that's not running!")
+        if session_id != self.srv.running_id:
+            self.reply_reason(
+                418,
+                'I\'m a teapot! Can\'t set break for session that\'s not running!')
             return
 
         # 418 if in higher state
-        if common.is_A_earlier_than_B(breakpoint, status_dict['break']):
-            reply = {'reason': 'I am a teapot! I know nothing of time-travel!',
-                     'hint': {'breakpoints': common.get_valid_breaks()}}
+        if common.is_a_earlier_than_b(breakpoint, status_dict['break']):
+            reply = {
+                'reason': 'I\'m a teapot! I know nothing of time-travel!',
+                'hint': {
+                    'breakpoints': common.get_valid_breaks()
+                }
+            }
             reply.update(status_dict)
             self.reply_json(418, reply)
             return
 
         # Post run command to manager queue
-        self.srv.cmd({
-            'session': session_id,
-            'cmd': 'run',
-            'break': breakpoint})
+        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint})
 
         self.srv.heartbeat(session_id, hb_timeout)
-        self.reply_reason(200, "Will try to set break before " + breakpoint)
+        self.reply_reason(200, 'Will try to set break before ' + breakpoint)
 
 
 class StopHandler(APIHandler):  # pylint: disable=R0904
-
     """
     Handles GET /stop
     """
 
     def get(self):
-        session_id = self.get_argument("session")
+        session_id = self.get_argument('session')
 
         try:
-            _ = self.srv.status(session_id)
+            self.srv.status(session_id)
         except KeyError:
             self.reply_reason(404, 'No session with this ID.')
             return
@@ -190,13 +211,12 @@ class StopHandler(APIHandler):  # pylint: disable=R0904
 
 
 class StatusHandler(APIHandler):  # pylint: disable=R0904
-
     """
     Handle GET /status?
     """
 
     def get(self):
-        session_id = self.get_argument("session", default=None)
+        session_id = self.get_argument('session', default=None)
         if session_id:
             try:
                 status = self.srv.status(session_id)
@@ -209,18 +229,17 @@ class StatusHandler(APIHandler):  # pylint: disable=R0904
 
 
 class UploadHandler(APIHandler):  # pylint: disable=R0904
-
     """
     Handles POST /upload
     """
 
     def post(self):
-        session_id = self.get_argument("session")
+        session_id = self.get_argument('session')
         if session_id != self.srv.running_id:
             self.reply_reason(404, 'Specified session is not running')
             return
 
-        filename = self.get_argument("filename")
+        filename = self.get_argument('filename')
         contents = self.request.body
 
         filepath = self.srv.session_file(session_id, filename)
@@ -235,16 +254,15 @@ class UploadHandler(APIHandler):  # pylint: disable=R0904
 
 
 class ArtifactHandler(APIHandler):  # pylint: disable=R0904
-
     """
     Handle GET /atrifact?
     """
 
     def get(self):
-        session_id = self.get_argument("session")
+        session_id = self.get_argument('session')
 
-        filename = self.get_argument("filename", None)
-        maxsize = self.get_argument("maxsize", None)
+        filename = self.get_argument('filename', None)
+        maxsize = self.get_argument('maxsize', None)
 
         # look for test directory
         if not os.path.exists(self.srv.session_dir(session_id)):
@@ -273,9 +291,12 @@ class ArtifactHandler(APIHandler):  # pylint: disable=R0904
         file_size = os.stat(filepath).st_size
 
         if maxsize is not None and file_size > maxsize:
-            self.reply_json(409,
-                            {'reason': "File does not fit into the size limit specified by the client.",
-                             'filesize': file_size})
+            self.reply_json(
+                409, {
+                    'reason':
+                    'File does not fit into the size limit specified by the client.',
+                    'filesize': file_size
+                })
             return
 
         if file_size > TRANSFER_SIZE_LIMIT:
@@ -284,16 +305,17 @@ class ArtifactHandler(APIHandler):  # pylint: disable=R0904
             except KeyError:
                 pass
             else:
-                if common.is_A_earlier_than_B(cur_stage, 'postprocess'):
-                    self.reply_json(503, {
-                        'reason':
-                        'File is too large and a session is running',
-                        'running_session': self.srv.running_id,
-                        'filesize': file_size,
-                        'limit': TRANSFER_SIZE_LIMIT
-                    })
+                if common.is_a_earlier_than_b(cur_stage, 'postprocess'):
+                    self.reply_json(
+                        503, {
+                            'reason':
+                            'File is too large and a session is running',
+                            'running_session': self.srv.running_id,
+                            'filesize': file_size,
+                            'limit': TRANSFER_SIZE_LIMIT
+                        })
                     return
-        self.set_header("Content-type", "application/octet-stream")
+        self.set_header('Content-type', 'application/octet-stream')
         with open(filepath, 'rb') as artifact_file:
             while True:
                 data = artifact_file.read(TRANSFER_SIZE_LIMIT)
@@ -306,20 +328,18 @@ class ArtifactHandler(APIHandler):  # pylint: disable=R0904
 
 
 class StaticHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
-
     """
     Handle /manager.html
     """
 
-    def initialize(self, templ):  # pylint: disable=W0221
-        self.template = templ  # pylint: disable=W0201
+    def initialize(self, template):  # pylint: disable=W0221
+        self.template = template  # pylint: disable=W0201
 
     def get(self):
         self.render(self.template)
 
 
 class ApiServer(object):
-
     """ API server class"""
 
     def __init__(self, in_queue, out_queue, working_dir, debug=False):
@@ -334,26 +354,20 @@ class ApiServer(object):
         handler_params = dict(server=self)
 
         handlers = [
-            (r"/run", RunHandler, handler_params),
-            (r"/stop", StopHandler, handler_params),
-            (r"/status", StatusHandler, handler_params),
-            (r"/artifact", ArtifactHandler, handler_params),
-            (r"/upload", UploadHandler, handler_params)
-
+            (r'/validate', ValidateConfgiHandler, handler_params),
+            (r'/run', RunHandler, handler_params),
+            (r'/stop', StopHandler, handler_params),
+            (r'/status', StatusHandler, handler_params),
+            (r'/artifact', ArtifactHandler, handler_params),
+            (r'/upload', UploadHandler, handler_params),
+            (r'/manager\.html$', StaticHandler, dict(template='manager.jade'))
         ]
-
-        if USE_JADE:
-            handlers.append(
-                (r"/manager\.html$", StaticHandler,
-                 {"template": "manager.jade"})
-            )
 
         self.app = tornado.web.Application(
             handlers,
-            template_path=os.path.join(os.path.dirname(__file__), "templates"),
-            static_path=os.path.join(os.path.dirname(__file__), "static"),
-            debug=debug,
-        )
+            template_path=os.path.join(os.path.dirname(__file__), 'templates'),
+            static_path=os.path.join(os.path.dirname(__file__), 'static'),
+            debug=debug, )
 
     def read_status_updates(self):
         """Read status messages from manager"""
@@ -367,13 +381,17 @@ class ApiServer(object):
             pass
 
     def check(self):
-	"""Read status messages from manager and check heartbeat"""
-        self.read_status_updates()	
+        """Read status messages from manager and check heartbeat"""
+        self.read_status_updates()
 
         if self._running_id and self._hb_deadline is not None\
                 and time.time() > self._hb_deadline:
-            
-            self.cmd({'cmd': 'run', 'session': self._running_id, 'break':'finished'})
+
+            self.cmd({
+                'cmd': 'run',
+                'session': self._running_id,
+                'break': 'finished'
+            })
             self.cmd({'cmd': 'stop', 'session': self._running_id})
 
     def set_session_status(self, session_id, new_status):
@@ -405,26 +423,18 @@ class ApiServer(object):
         """Return file path for given session id"""
         return os.path.join(self._working_dir, session_id, filename)
 
+    @retry(stop_max_attempt_number=10, retry_on_exception=lambda e: isinstance(e, OSError))
     def create_session_dir(self, offered_id):
         """
         Returns generated session id
         Should only be used if no tests are running
         """
         if not offered_id:
-            offered_id = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        # This should use one or two attempts in typical cases
-        for n_attempt in xrange(10000000000):
-            session_id = "%s_%010d" % (offered_id, n_attempt)
-            session_dir = self.session_dir(session_id)
-            try:
-                os.makedirs(session_dir)
-            except OSError as err:
-                if err.errno != errno.EEXIST:
-                    raise RuntimeError("Failed to create session directory")
-            if self.is_empty_session(session_id):
-                return session_id
-            n_attempt += 1
-        raise RuntimeError("Failed to generate session id")
+            offered_id = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        session_id = '{}_{}'.format(offered_id, uuid.uuid4().hex)
+        session_dir = self.session_dir(session_id)
+        os.makedirs(session_dir)
+        return session_id
 
     def is_empty_session(self, session_id):
         """Return true if the session did not get past the lock stage"""
@@ -457,12 +467,9 @@ class ApiServer(object):
         """
         Run tornado ioloop
         """
-        self.app.listen(8888)
-        ioloop = tornado.ioloop.IOLoop.instance()
-        update_cb = tornado.ioloop.PeriodicCallback(
-            self.check, 300, ioloop)
-        update_cb.start()
-        ioloop.start()
+        server = tornado.httpserver.HTTPServer(self.app)
+        server.listen(8888)
+        tornado.ioloop.IOLoop.current().start()
 
 
 def main(webserver_queue, manager_queue, test_directory, debug):
