@@ -309,9 +309,10 @@ class TankWorker(object):
                 self._execute_stage(stage)
             except InterruptTest as exc:
                 self.retcode = self.retcode or 1
-                self.process_failure('Interrupted')
                 if exc.remove_break:
                     self.break_at = 'finished'
+                else:
+                    self.process_failure('Interrupted')
             except Exception as ex:
                 self.retcode = self.retcode or 1
                 _log.exception(
@@ -320,7 +321,7 @@ class TankWorker(object):
             else:
                 self.done_stages.add(stage)
         else:
-            self.process_failure('skipped')
+            _log.error('Failure in stage %s:\n%s', self.stage, 'skipped')
 
         self.report_status('running', True)
 

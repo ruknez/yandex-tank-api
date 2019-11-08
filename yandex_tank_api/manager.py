@@ -120,7 +120,7 @@ class Manager(object):
     def _handle_cmd_stop(self, msg):
         """Check running session and kill tank"""
         if msg['session'] == self.session_id:
-            self.tank_runner.stop(remove_break=False)
+            self.tank_runner.stop(remove_break=True)
         else:
             _log.error('Can stop only current session')
 
