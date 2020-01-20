@@ -102,7 +102,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
 
         # 503 if any running session exists
         if self.srv.running_id is not None:
-            reply = {'reason': 'Another session is already running.'}
+            reply = {'reason': 'Another session is already running: %s' % self.srv.running_id}
             reply.update(self.srv.running_status)
             self.reply_json(503, reply)
             return
@@ -222,6 +222,7 @@ class StatusHandler(APIHandler):  # pylint: disable=R0904
                 status = self.srv.status(session_id)
             except KeyError:
                 self.reply_reason(404, 'No session with this ID.')
+                return
             self.srv.heartbeat(session_id)
             self.reply_json(200, status)
         else:
