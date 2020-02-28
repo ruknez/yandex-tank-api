@@ -10,11 +10,12 @@ import logging.handlers
 import traceback
 import six
 import time
+import threading
+import socket
 
 import yandex_tank_api.common
 import yandex_tank_api.worker
 import yandex_tank_api.webserver
-
 
 _log = logging.getLogger(__name__)
 
@@ -105,6 +106,32 @@ class Manager(object):
 
         self._reset_session(ignore_disposable=True)
 
+        self._send_info_timeout = 5
+
+        self.dockerized = bool(os.popen("awk -F/ '$2 == \"docker\"' /proc/self/cgroup").read())
+        self.heartbeat_info = {
+            'hostname': socket.gethostname(),
+            'port': self._port if self.dockerized else 8123
+        }
+        self.info_sender = threading.Thread(target=self._send_info)
+        self.info_sender.daemon = True
+        self.info_sender.start()
+
+    @property
+    def _port(self):
+        p = os.environ.get('EXPOSED_PORT', '0')
+        if p.isdigit():
+            return int(p)
+        else:
+            _log.warning("Invalid port in EXPOSED_PORT env var")
+            return 0
+
+    def _send_info(self):
+        while True:
+            if self.heartbeat_info is not None:
+                pass
+            time.sleep(self._send_info_timeout)
+
     def _reset_session(self, ignore_disposable=False):
         """
         Resets session state variables
@@ -121,6 +148,7 @@ class Manager(object):
         """Check running session and kill tank"""
         if msg['session'] == self.session_id:
             self.tank_runner.stop(remove_break=True)
+
         else:
             _log.error('Can stop only current session')
 
@@ -260,6 +288,7 @@ class Manager(object):
         Remember new status and notify webserver.
         """
         new_status = msg['status']
+        self.heartbeat_info['status'] = new_status
 
         if self.last_tank_status not in ['success', 'failed'] \
                 and new_status in ['success', 'failed']:
