@@ -12,10 +12,12 @@ import six
 import time
 import threading
 import socket
+import requests
 
 import yandex_tank_api.common
 import yandex_tank_api.worker
 import yandex_tank_api.webserver
+
 
 _log = logging.getLogger(__name__)
 
@@ -110,12 +112,16 @@ class Manager(object):
 
         self.dockerized = bool(os.popen("awk -F/ '$2 == \"docker\"' /proc/self/cgroup").read())
         self.heartbeat_info = {
-            'hostname': socket.gethostname(),
+            'host': socket.gethostname(),
             'port': self._port if self.dockerized else 8123
         }
         self.info_sender = threading.Thread(target=self._send_info)
         self.info_sender.daemon = True
         self.info_sender.start()
+
+    @property
+    def _heartbeat_destination(self):
+        return os.environ.get('HEARTBEAT_HANDLER')
 
     @property
     def _port(self):
@@ -127,10 +133,12 @@ class Manager(object):
             return 0
 
     def _send_info(self):
-        while True:
-            if self.heartbeat_info is not None:
-                pass
-            time.sleep(self._send_info_timeout)
+        if self._heartbeat_destination is None:
+            return
+        else:
+            while True:
+                requests.post(self._heartbeat_destination, json=self.heartbeat_info)
+                time.sleep(self._send_info_timeout)
 
     def _reset_session(self, ignore_disposable=False):
         """
