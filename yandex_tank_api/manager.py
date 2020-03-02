@@ -18,7 +18,6 @@ import yandex_tank_api.common
 import yandex_tank_api.worker
 import yandex_tank_api.webserver
 
-
 _log = logging.getLogger(__name__)
 
 
@@ -133,11 +132,13 @@ class Manager(object):
             return 0
 
     def _send_info(self):
+        _log.info("HHHHHHHHHHH %s", self._heartbeat_destination)
         if self._heartbeat_destination is None:
             return
         else:
             while True:
-                requests.post(self._heartbeat_destination, json=self.heartbeat_info)
+                r = requests.post(self._heartbeat_destination, json=self.heartbeat_info)
+                r.raise_for_status()
                 time.sleep(self._send_info_timeout)
 
     def _reset_session(self, ignore_disposable=False):
