@@ -114,7 +114,7 @@ class Manager(object):
             'host': socket.gethostname(),
             'port': self._port if self.dockerized else 8123
         }
-        self.info_sender = threading.Thread(target=self._send_info)
+        self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
         self.info_sender.start()
 
@@ -131,8 +131,7 @@ class Manager(object):
             _log.warning("Invalid port in EXPOSED_PORT env var")
             return 0
 
-    def _send_info(self):
-        _log.info("HHHHHHHHHHH %s", self._heartbeat_destination)
+    def _send_heartbeat_info(self):
         if self._heartbeat_destination is None:
             return
         else:
