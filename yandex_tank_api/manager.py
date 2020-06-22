@@ -149,6 +149,7 @@ class Manager(object):
             raise KeyboardInterrupt()
         _log.info('Resetting current session variables')
         self.session_id = None
+        self.heartbeat_info['session'] = None
         self.tank_runner = None
         self.last_tank_status = 'not started'
 
@@ -200,7 +201,8 @@ class Manager(object):
             })
         else:
             self.session_id = msg['session']
-
+            self.heartbeat_info['session'] = msg['session']
+            
     def _handle_cmd(self, msg):
         """Process command from webserver"""
 
