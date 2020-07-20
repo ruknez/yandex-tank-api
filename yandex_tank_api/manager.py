@@ -110,13 +110,12 @@ class Manager(object):
             'host': socket.gethostname(),
             'port': self._port if self.dockerized else 8123
         }
-
-        self._reset_session(ignore_disposable=True)
-
         self._send_info_timeout = 5
         self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
         self.info_sender.start()
+
+        self._reset_session(ignore_disposable=True)
 
     @property
     def _heartbeat_destination(self):
@@ -147,7 +146,6 @@ class Manager(object):
         """
         if self.cfg['disposable'] and not ignore_disposable:
             self.heartbeat_info['status'] = "disconnect"
-            self._send_heartbeat_info()
             raise KeyboardInterrupt()
         _log.info('Resetting current session variables')
         self.session_id = None
