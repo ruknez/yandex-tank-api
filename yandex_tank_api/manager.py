@@ -105,6 +105,7 @@ class Manager(object):
         self.webserver_process.daemon = True
         self.webserver_process.start()
 
+        self.dockerized = bool(os.popen("awk -F/ '$2 == \"docker\"' /proc/self/cgroup").read())
         self.heartbeat_info = {
             'host': socket.gethostname(),
             'port': self._port if self.dockerized else 8123
@@ -113,8 +114,6 @@ class Manager(object):
         self._reset_session(ignore_disposable=True)
 
         self._send_info_timeout = 5
-
-        self.dockerized = bool(os.popen("awk -F/ '$2 == \"docker\"' /proc/self/cgroup").read())
         self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
         self.info_sender.start()
