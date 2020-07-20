@@ -105,15 +105,16 @@ class Manager(object):
         self.webserver_process.daemon = True
         self.webserver_process.start()
 
+        self.heartbeat_info = {
+            'host': socket.gethostname(),
+            'port': self._port if self.dockerized else 8123
+        }
+
         self._reset_session(ignore_disposable=True)
 
         self._send_info_timeout = 5
 
         self.dockerized = bool(os.popen("awk -F/ '$2 == \"docker\"' /proc/self/cgroup").read())
-        self.heartbeat_info = {
-            'host': socket.gethostname(),
-            'port': self._port if self.dockerized else 8123
-        }
         self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
         self.info_sender.start()
@@ -146,6 +147,8 @@ class Manager(object):
         Should be called only when tank is not running
         """
         if self.cfg['disposable'] and not ignore_disposable:
+            self.heartbeat_info['status'] = "disconnect"
+            self._send_heartbeat_info()
             raise KeyboardInterrupt()
         _log.info('Resetting current session variables')
         self.session_id = None
