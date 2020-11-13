@@ -79,8 +79,17 @@ class TankWorker(object):
         self.done_stages = set()
         self.lock_dir = lock_dir
         self.lock = None
-
+        self._prepare_timeout = os.getenv("TANKAPI_PREPARE_TIMEOUT")
+        if isinstance(self._prepare_timeout, str) and self._prepare_timeout.isdigit():
+            self._prepare_timeout = int(self._prepare_timeout)
+            self._prepare_timer = threading.Timer(self._prepare_timeout, lambda: (_ for _ in ()).throw(InterruptTest))
+            self._prepare_timer.setDaemon(True)
+        else:
+            self._prepare_timer = None
         print(lock_dir)
+
+    def _interrupt_preparation_on_timeout(self):
+        _log.warning("preparation ended after timeout of %f", self._prepare_timeout)
 
     @property
     def locked(self):
@@ -274,8 +283,25 @@ class TankWorker(object):
         _log.error('Failure in stage %s:\n%s', self.stage, reason)
         self.failures.append({'stage': self.stage, 'reason': reason})
 
+    def _manage_prepare_timer(self, stage):
+        if self._prepare_timer is None:
+            return
+        if stage == 'prepare':
+            if not self._prepare_timer._started.is_set():
+                self._prepare_timer.start()
+        else:
+            if self._prepare_timer._started.is_set() and self._prepare_timer.is_alive():
+                self._prepare_timer.cancel()
+
     def _execute_stage(self, stage):
         """Really execute stage and set retcode"""
+        self._manage_prepare_timer(stage)
+        if stage == 'prepare':
+            if not self._prepare_timer._started.is_set():
+                self._prepare_timer.start()
+        else:
+            if self._prepare_timer._started.is_set():
+                self._prepare_timer.cancel()
         new_retcode = {
             'init': self.__preconfigure,
             'lock': self.__get_lock,
