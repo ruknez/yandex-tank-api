@@ -122,6 +122,10 @@ class Manager(object):
         return os.environ.get('HEARTBEAT_HANDLER')
 
     @property
+    def disposable(self):
+        return self.cfg['disposable'] or os.environ.get('DISPOSABLE') == "on"
+
+    @property
     def _port(self):
         p = os.environ.get('EXPOSED_PORT', '0')
         if p.isdigit():
@@ -144,7 +148,7 @@ class Manager(object):
         Resets session state variables
         Should be called only when tank is not running
         """
-        if self.cfg['disposable'] and not ignore_disposable:
+        if self.disposable and not ignore_disposable:
             self.heartbeat_info['status'] = "disconnect"
             raise KeyboardInterrupt()
         _log.info('Resetting current session variables')
