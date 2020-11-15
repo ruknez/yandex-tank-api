@@ -4,7 +4,6 @@ Based on ConsoleWorker from yandex-tank
 """
 
 import signal
-import fnmatch
 import logging
 import os
 import os.path
@@ -146,7 +145,7 @@ class TankWorker(object):
             conf_names = os.listdir(config_dir)
             conf_names.sort()
             for filename in conf_names:
-                if fnmatch.fnmatch(filename, '*.yaml'):
+                if filename.endswith('.yaml'):
                     config_path = os.path.realpath(
                         config_dir + os.sep + filename)
                     _log.debug("Adding config file: %s", config_path)
