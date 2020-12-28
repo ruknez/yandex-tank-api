@@ -27,7 +27,7 @@ class TankRunner(object):
     """
 
     def __init__(
-            self, cfg, manager_queue, session_id, tank_config, first_break):
+            self, cfg, manager_queue, session_id, tank_config, first_break, timer):
         """
         Sets up working directory and tank queue
         Starts tank process
@@ -54,7 +54,7 @@ class TankRunner(object):
             target=yandex_tank_api.worker.run,
             args=(
                 self.tank_queue, manager_queue, work_dir, lock_dir, session_id,
-                ignore_machine_defaults, configs_location))
+                ignore_machine_defaults, configs_location, timer))
         self.tank_process.start()
 
     def set_break(self, next_break):
@@ -114,6 +114,15 @@ class Manager(object):
         self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
         self.info_sender.start()
+
+        if self.disposable:
+            self._timeout = os.getenv("TANKAPI_PREPARE_TIMEOUT")
+            if isinstance(self._timeout, str) and self._timeout.isdigit():
+                self._timeout = int(self._timeout)
+                self._timer = threading.Timer(self._timeout, self._reset_session)
+                self._timer.setDaemon(True)
+            else:
+                self._timer = None
 
         self._reset_session(ignore_disposable=True)
 
@@ -193,7 +202,9 @@ class Manager(object):
                 manager_queue=self.manager_queue,
                 session_id=msg['session'],
                 tank_config=msg['config'],
-                first_break=msg['break'])
+                first_break=msg['break'],
+                timer=self._timer
+            )
         except KeyboardInterrupt:
             pass
         except Exception as ex:
@@ -271,7 +282,6 @@ class Manager(object):
         Check that tank is alive.
         Check that webserver is alive.
         """
-
         while True:
             if self.session_id is not None and not self.tank_runner.is_alive():
                 self._handle_tank_exit()

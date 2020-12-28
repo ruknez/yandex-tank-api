@@ -61,7 +61,7 @@ class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
             self.reply_json(status_code, {'reason': self._reason})
 
 
-class ValidateConfgiHandler(APIHandler):  # pylint: disable=R0904
+class ValidateConfigHandler(APIHandler):  # pylint: disable=R0904
     """
     Handles POST /validate
     """
@@ -355,7 +355,7 @@ class ApiServer(object):
         handler_params = dict(server=self)
 
         handlers = [
-            (r'/validate', ValidateConfgiHandler, handler_params),
+            (r'/validate', ValidateConfigHandler, handler_params),
             (r'/run', RunHandler, handler_params),
             (r'/stop', StopHandler, handler_params),
             (r'/status', StatusHandler, handler_params),
