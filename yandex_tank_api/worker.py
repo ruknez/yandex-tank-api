@@ -295,12 +295,6 @@ class TankWorker(object):
     def _execute_stage(self, stage):
         """Really execute stage and set retcode"""
         self._manage_prepare_timer(stage)
-        if stage == 'prepare':
-            if not self._prepare_timer._started.is_set():
-                self._prepare_timer.start()
-        else:
-            if self._prepare_timer._started.is_set():
-                self._prepare_timer.cancel()
         new_retcode = {
             'init': self.__preconfigure,
             'lock': self.__get_lock,
