@@ -113,7 +113,8 @@ class Manager(object):
         self._send_info_timeout = 5
         self.info_sender = threading.Thread(target=self._send_heartbeat_info)
         self.info_sender.daemon = True
-        self.info_sender.start()
+
+        self._timeout_thread = None
 
         self._reset_session(ignore_disposable=True)
 
@@ -133,6 +134,49 @@ class Manager(object):
         else:
             _log.warning("Invalid port in EXPOSED_PORT env var")
             return 0
+
+    @property
+    def _inactive_timeout(self):
+        timeout = os.environ.get('TANKAPI_PREPARE_TIMEOUT')
+        if timeout:
+            if timeout.isdigit():
+                return int(timeout)
+            else:
+                _log.warning("Invalid TANKAPI_PREPARE_TIMEOUT env value:%s", timeout)
+        return None
+
+    def _start_countdown(self):
+        if self._inactive_timeout:
+            if self._timeout_thread:
+                self._timeout_thread.cancel()
+                _log.info('Cancelled previous timeout %s', self._timeout_thread)
+            self._timeout_thread = threading.Timer(
+                    self._inactive_timeout,
+                    self._stop_api,
+                    args=['No task updates until timeout'])
+            self._timeout_thread.start()
+            _log.info('Set timeout thread %s to stop api after %ss',
+                      self._timeout_thread,
+                      self._inactive_timeout)
+
+    def _stop_countdown(self):
+        if self._timeout_thread:
+            self._timeout_thread.cancel()
+            _log.info('Cancel timeout thread %s', self._timeout_thread)
+
+    def _stop_api(self, reason):
+        _log.error("Stopping api because: %s", reason)
+        if self.tank_runner:
+            try:
+                self.tank_runner.stop(remove_break=True)
+            except Exception as ex:
+                _log.error('Tank runner failed to stop: %s', ex)
+        os.kill(os.getppid(), 2)
+        os.kill(os.getpid(), 2)
+        time.sleep(3)
+        _log.error("Interrupt was not sufficient, killing myself")
+        os.kill(os.getpid(), 15)
+        os.kill(os.getppid(), 15)
 
     def _send_heartbeat_info(self):
         if self._heartbeat_destination is None:
@@ -254,6 +298,7 @@ class Manager(object):
             })
         # In any case, reset the session
         self._reset_session()
+        self._start_countdown()
 
     def _handle_webserver_exit(self):
         """Stop tank and raise RuntimeError"""
@@ -271,6 +316,9 @@ class Manager(object):
         Check that tank is alive.
         Check that webserver is alive.
         """
+
+        self.info_sender.start()
+        self._start_countdown()
 
         while True:
             if self.session_id is not None and not self.tank_runner.is_alive():
@@ -301,6 +349,14 @@ class Manager(object):
         Wait for tank exit if it stopped.
         Remember new status and notify webserver.
         """
+        _log.info("Got tank status msg %s", msg)
+        if msg['stage_completed']:
+            self._start_countdown()
+        elif msg['status'] == 'running':
+            self._stop_countdown()
+        else:
+            _log.warning('Something wrong with current status %s', msg)
+
         new_status = msg['status']
         self.heartbeat_info['status'] = new_status
 
@@ -338,7 +394,11 @@ def run_server(options):
             options.log_file, maxBytes=1000000, backupCount=16)
 
     handler.setFormatter(
-        logging.Formatter('%(asctime)s [%(levelname)s] %(name)s %(message)s'))
+        logging.Formatter('%(asctime)s [%(levelname)s] PID:%(process)d %(name)s %(filename)s:%(lineno)d  %(message)s'))
+
+    # remove existing logging handlers to avoid message duplication
+    for h in logging.root.handlers[:]:
+        logging.root.removeHandler(h)
     root_logger.addHandler(handler)
 
     logger = logging.getLogger(__name__)
