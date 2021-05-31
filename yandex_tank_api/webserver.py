@@ -71,8 +71,8 @@ class ValidateConfgiHandler(APIHandler):  # pylint: disable=R0904
         try:
             config = yaml.safe_load(config)
             assert isinstance(config, dict), 'Config must be YAML dict'
-        except yaml.YAMLError:
-            self.reply_reason(400, 'Config is not a valid YAML')
+        except yaml.YAMLError as ex:
+            self.reply_reason(400, 'Config is not a valid YAML %s' % repr(ex))
             return
         except AssertionError as aexc:
             self.reply_reason(400, repr(aexc))
