@@ -194,7 +194,7 @@ class Manager(object):
         """
         if self.disposable and not ignore_disposable:
             self.heartbeat_info['status'] = "disconnect"
-            raise KeyboardInterrupt()
+            return self._stop_api("session reset")
         _log.info('Resetting current session variables')
         self.session_id = None
         self.heartbeat_info['session'] = None
