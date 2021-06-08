@@ -154,6 +154,7 @@ class Manager(object):
                     self._inactive_timeout,
                     self._stop_api,
                     args=['No task updates until timeout'])
+            self._timeout_thread.daemon = True
             self._timeout_thread.start()
             _log.info('Set timeout thread %s to stop api after %ss',
                       self._timeout_thread,
