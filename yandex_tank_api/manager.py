@@ -167,7 +167,7 @@ class Manager(object):
 
     def _handle_cmd(self, msg):
         """Process command from webserver"""
-
+        _log.error("in _handle_cmd mess = ", msg)
         if 'session' not in msg:
             _log.error('Bad command: session id not specified')
             return
@@ -240,6 +240,7 @@ class Manager(object):
                     block=True, timeout=self.cfg['message_check_interval'])
             except multiprocessing.queues.Empty:
                 continue
+            _log.error("run manager mesg = ", msg)
             self._handle_msg(msg)
 
     def _handle_msg(self, msg):
