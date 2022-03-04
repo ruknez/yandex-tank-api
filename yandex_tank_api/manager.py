@@ -146,6 +146,7 @@ class Manager(object):
                 'both config and test should be present:%s\n', msg)
             return
         try:
+            _log.error("_handle_cmd_new_session msg = ", msg)
             print(msg)
             self.tank_runner = TankRunner(
                 cfg=self.cfg,
