@@ -246,7 +246,7 @@ class Manager(object):
 
     def _handle_msg(self, msg):
         """Handle message from manager queue"""
-        _log.info('Recieved message:\n%s', msg)
+        _log.info('Recieved message LOLO:\n%s', msg)
         if 'cmd' in msg:
             # Recieved command from server
             self._handle_cmd(msg)
