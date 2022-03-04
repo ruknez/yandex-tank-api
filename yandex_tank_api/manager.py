@@ -146,7 +146,7 @@ class Manager(object):
                 'both config and test should be present:%s\n', msg)
             return
         try:
-            _log.error("_handle_cmd_new_session msg = ", msg)
+            _log.error("_handle_cmd_new_session msg = %s", msg)
             print(msg)
             self.tank_runner = TankRunner(
                 cfg=self.cfg,
@@ -241,7 +241,7 @@ class Manager(object):
                     block=True, timeout=self.cfg['message_check_interval'])
             except multiprocessing.queues.Empty:
                 continue
-            _log.error("run manager mesg = ", msg)
+            _log.error("run manager mesg = %s", msg)
             self._handle_msg(msg)
 
     def _handle_msg(self, msg):

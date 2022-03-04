@@ -142,10 +142,11 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         breakpoint = self.get_argument('break', 'finished')
         session_id = self.get_argument('session')
         hb_timeout = self.get_argument('heartbeat', None)
-        superjob_ID = self.get_argument('superjob')
+        superjob_ID = self.get_argument('superjob', None)
 
         print("superjob_ID = ", superjob_ID)
-        os.environ['SUPERJOB_ID'] = superjob_ID
+        if superjob_ID is not None:
+            os.environ['SUPERJOB_ID'] = superjob_ID
 
         self.set_header('Content-type', 'application/json')
 
