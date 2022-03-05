@@ -146,7 +146,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
 
         print("superjob_ID = ", superjob_ID)
         if superjob_ID is not None:
-            os.environ['SUPERJOB_ID'] = superjob_ID
+            os.environ['SUPERJOB_ID_test'] = superjob_ID
 
         self.set_header('Content-type', 'application/json')
 
