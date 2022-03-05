@@ -13,6 +13,8 @@ import uuid
 import multiprocessing
 import datetime
 import time
+import logging
+import logging.handlers
 import yaml
 import yandex_tank_api.common as common
 from retrying import retry
@@ -22,6 +24,7 @@ from yandextank.core.consoleworker import load_core_base_cfg, load_local_base_cf
 TRANSFER_SIZE_LIMIT = 128 * 1024
 DEFAULT_HEARTBEAT_TIMEOUT = 600
 
+_log = logging.getLogger(__name__)
 
 class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
     """
@@ -92,7 +95,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
     """
 
     def post(self):
-
+        _log.error("RunHandler post")
         offered_test_id = self.get_argument(
             'test', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
         breakpoint = self.get_argument('break', 'finished')
@@ -139,12 +142,14 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         self.reply_json(200, {'session': session_id})
 
     def get(self):
+        _log.error("RunHandler get")
         breakpoint = self.get_argument('break', 'finished')
         session_id = self.get_argument('session')
         hb_timeout = self.get_argument('heartbeat', None)
         superjob_ID = self.get_argument('superjob', None)
+        _log.error("superjob_ID = %s", superjob_ID)
 
-        print("superjob_ID = ", superjob_ID)
+        print("superjob_ID = %s", superjob_ID)
         if superjob_ID is not None:
             os.environ['SUPERJOB_ID_test'] = superjob_ID
 
