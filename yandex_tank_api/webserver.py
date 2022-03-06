@@ -135,6 +135,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             'session': session_id,
             'cmd': 'run',
             'break': breakpoint,
+            'RunHandler': "post",
             'config': config
         })
 
@@ -192,7 +193,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             return
 
         # Post run command to manager queue
-        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint})
+        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint, 'RunHandler': "get"})
 
         self.srv.heartbeat(session_id, hb_timeout)
         self.reply_reason(200, 'Will try to set break before ' + breakpoint)
