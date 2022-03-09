@@ -126,6 +126,7 @@ class Manager(object):
 
     def _handle_cmd_set_break(self, msg):
         """New break for running session"""
+        _log.error('_handle_cmd_set_break')
         if msg['session'] != self.session_id:
             raise RuntimeError(
                 'Webserver requested to start session '
@@ -139,6 +140,7 @@ class Manager(object):
 
     def _handle_cmd_new_session(self, msg):
         """Start new session"""
+        _log.error("_handle_cmd_new_session")
         if 'session' not in msg or 'config' not in msg:
             # Internal protocol error
             _log.critical(
@@ -168,7 +170,7 @@ class Manager(object):
 
     def _handle_cmd(self, msg):
         """Process command from webserver"""
-        _log.error("in _handle_cmd mess = ", msg)
+        _log.error("in _handle_cmd mess = &s", msg)
         if 'session' not in msg:
             _log.error('Bad command: session id not specified')
             return

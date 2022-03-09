@@ -169,6 +169,7 @@ class TankWorker(object):
     def __preconfigure(self):
         """Logging and TankCore setup"""
         self.__setup_logging()
+        _log.error("__preconfigure")
         self.core.load_plugins()
 
     def __get_lock(self):
