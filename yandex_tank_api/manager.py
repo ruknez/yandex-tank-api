@@ -173,7 +173,7 @@ class Manager(object):
 
     def _handle_cmd(self, msg):
         """Process command from webserver"""
-        _log.error("in _handle_cmd mess = &s", msg)
+        _log.error("in _handle_cmd mess = %s", msg)
         if 'session' not in msg:
             _log.error('Bad command: session id not specified')
             return
@@ -184,11 +184,13 @@ class Manager(object):
             self._handle_cmd_stop(msg)
         elif cmd == 'run':
             if self.session_id is not None:
-                if 'superjob' in msg:
-                    self.tank_runner.set_super_job_id(msg['superjob'])
+                _log.error('_handle_cmd: elf.session_id is not None')
                 self._handle_cmd_set_break(msg)
             else:
+                _log.error('_handle_cmd: elf.session_id is not None')
                 self._handle_cmd_new_session(msg)
+                if 'superjob' in msg:
+                    self.tank_runner.set_super_job_id(msg['superjob'])
         else:
             _log.critical('Unknown command: %s', cmd)
 
@@ -248,7 +250,6 @@ class Manager(object):
                     block=True, timeout=self.cfg['message_check_interval'])
             except multiprocessing.queues.Empty:
                 continue
-            _log.error("run manager mesg = %s", msg)
             self._handle_msg(msg)
 
     def _handle_msg(self, msg):

@@ -100,6 +100,11 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             'test', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
         breakpoint = self.get_argument('break', 'finished')
         hb_timeout = self.get_argument('heartbeat', None)
+        superjob_ID = self.get_argument('superjob', None)
+        _log.error("superjob_ID = %s", superjob_ID)
+
+        if superjob_ID is not None:
+            os.environ['SUPERJOB_ID_test'] = superjob_ID
 
         config = self.request.body
 
@@ -136,7 +141,8 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             'cmd': 'run',
             'break': breakpoint,
             'RunHandler': "post",
-            'config': config
+            'config': config,
+            'superjob': superjob_ID
         })
 
         self.srv.heartbeat(session_id, hb_timeout)
@@ -147,11 +153,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         breakpoint = self.get_argument('break', 'finished')
         session_id = self.get_argument('session')
         hb_timeout = self.get_argument('heartbeat', None)
-        superjob_ID = self.get_argument('superjob', None)
-        _log.error("superjob_ID = %s", superjob_ID)
-
-        if superjob_ID is not None:
-            os.environ['SUPERJOB_ID_test'] = superjob_ID
 
         self.set_header('Content-type', 'application/json')
 
@@ -192,7 +193,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             return
 
         # Post run command to manager queue
-        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint, 'RunHandler': "get", 'superjob': superjob_ID})
+        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint})
 
         self.srv.heartbeat(session_id, hb_timeout)
         self.reply_reason(200, 'Will try to set break before ' + breakpoint)
