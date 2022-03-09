@@ -47,12 +47,13 @@ class TankRunner(object):
         ignore_machine_defaults = cfg['ignore_machine_defaults']
         configs_location = cfg['configs_location']
 
+        _log.error("TankRunner __init__ super_job = %s", super_job)
         # Start tank process
         self.tank_process = multiprocessing.Process(
             target=yandex_tank_api.worker.run,
             args=(
                 self.tank_queue, manager_queue, work_dir, lock_dir, session_id,
-                ignore_machine_defaults, configs_location, super_job))
+                ignore_machine_defaults, configs_location))
         self.tank_process.start()
 
     def set_break(self, next_break):

@@ -347,7 +347,7 @@ def signal_handler(signum, _):
 
 def run(
         tank_queue, manager_queue, work_dir, lock_dir, session_id,
-        ignore_machine_defaults, configs_location, super_job):
+        ignore_machine_defaults, configs_location):
     """
     Target for tank process.
     This is the only function from this module ever used by Manager.
@@ -359,7 +359,7 @@ def run(
         Write tank status there
 
     """
-    _log.error("worker run super_job = %s", super_job)
+    # _log.error("worker run super_job = %s", super_job)
     os.chdir(work_dir)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
