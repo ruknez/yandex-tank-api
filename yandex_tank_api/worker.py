@@ -206,6 +206,9 @@ class TankWorker(object):
         while True:
             msg = self.tank_queue.get()
             # Check that there is a break in the message
+            if 'superjob' in msg:
+                _log.error("get_next_break  superjob id = %s", msg['superjob'])
+
             if 'break' not in msg:
                 _log.error(
                     'No break specified in the recieved message from manager')

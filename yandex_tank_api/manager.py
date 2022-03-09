@@ -59,6 +59,9 @@ class TankRunner(object):
         """Sends the next break to the tank process"""
         self.tank_queue.put({'break': next_break})
 
+    def set_super_job_id(self, super_job_id):
+        self.tank_queue.put({'superjob':super_job_id})
+
     def is_alive(self):
         """Check that the tank process didn't exit """
         return self.tank_process.exitcode is None
@@ -184,6 +187,8 @@ class Manager(object):
                 self._handle_cmd_set_break(msg)
             else:
                 self._handle_cmd_new_session(msg)
+            if 'superjob' in msg:
+                self.tank_runner.set_super_job_id(msg['superjob'])
         else:
             _log.critical('Unknown command: %s', cmd)
 
