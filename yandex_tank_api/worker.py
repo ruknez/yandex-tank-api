@@ -174,7 +174,7 @@ class TankWorker(object):
         _log.error("__preconfigure super_job %s", self.super_job_id)
 
         self.__setup_logging()
-        self.core.load_plugins()
+        self.core.load_plugins(self.super_job_id)
 
     def __get_lock(self):
         """Get lock and remember that we succeded in getting lock"""
