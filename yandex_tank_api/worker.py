@@ -61,7 +61,7 @@ class TankWorker(object):
 
     def __init__(
             self, tank_queue, manager_queue, working_dir, lock_dir, session_id,
-            ignore_machine_defaults, configs_location):
+            ignore_machine_defaults, configs_location, super_job):
 
         _log.error("TankWorker __init__")
         # Parameters from manager
@@ -80,6 +80,7 @@ class TankWorker(object):
         self.done_stages = set()
         self.lock_dir = lock_dir
         self.lock = None
+        self.super_job_id = super_job
 
         print(lock_dir)
 
@@ -170,7 +171,7 @@ class TankWorker(object):
     def __preconfigure(self):
         """Logging and TankCore setup"""
         _log.error("__preconfigure")
-        #_log.error("__preconfigure super_job %s", self.super_job_id)
+        _log.error("__preconfigure super_job %s", self.super_job_id)
 
         self.__setup_logging()
         self.core.load_plugins()
@@ -347,7 +348,7 @@ def signal_handler(signum, _):
 
 def run(
         tank_queue, manager_queue, work_dir, lock_dir, session_id,
-        ignore_machine_defaults, configs_location):
+        ignore_machine_defaults, configs_location, super_job):
     """
     Target for tank process.
     This is the only function from this module ever used by Manager.
@@ -359,10 +360,10 @@ def run(
         Write tank status there
 
     """
-    # _log.error("worker run super_job = %s", super_job)
+    _log.error("worker run super_job = %s", super_job)
     os.chdir(work_dir)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     TankWorker(
         tank_queue, manager_queue, work_dir, lock_dir, session_id,
-        ignore_machine_defaults, configs_location).perform_test()
+        ignore_machine_defaults, configs_location, super_job).perform_test()

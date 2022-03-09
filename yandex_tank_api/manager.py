@@ -53,7 +53,7 @@ class TankRunner(object):
             target=yandex_tank_api.worker.run,
             args=(
                 self.tank_queue, manager_queue, work_dir, lock_dir, session_id,
-                ignore_machine_defaults, configs_location))
+                ignore_machine_defaults, configs_location,super_job))
         self.tank_process.start()
 
     def set_break(self, next_break):
@@ -161,7 +161,7 @@ class Manager(object):
                 session_id=msg['session'],
                 tank_config=msg['config'],
                 first_break=msg['break'],
-                super_job="123"
+                super_job=msg['superjob']
             )
         except KeyboardInterrupt:
             pass
@@ -193,8 +193,6 @@ class Manager(object):
             else:
                 _log.error('_handle_cmd: else')
                 self._handle_cmd_new_session(msg)
-                if 'superjob' in msg:
-                    self.tank_runner.set_super_job_id(msg['superjob'])
         else:
             _log.critical('Unknown command: %s', cmd)
 
