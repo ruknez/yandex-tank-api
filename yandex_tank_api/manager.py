@@ -184,11 +184,11 @@ class Manager(object):
             self._handle_cmd_stop(msg)
         elif cmd == 'run':
             if self.session_id is not None:
+                if 'superjob' in msg:
+                    self.tank_runner.set_super_job_id(msg['superjob'])
                 self._handle_cmd_set_break(msg)
             else:
                 self._handle_cmd_new_session(msg)
-            if 'superjob' in msg:
-                self.tank_runner.set_super_job_id(msg['superjob'])
         else:
             _log.critical('Unknown command: %s', cmd)
 
