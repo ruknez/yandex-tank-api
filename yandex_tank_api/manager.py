@@ -187,7 +187,7 @@ class Manager(object):
                 _log.error('_handle_cmd: elf.session_id is not None')
                 self._handle_cmd_set_break(msg)
             else:
-                _log.error('_handle_cmd: elf.session_id is not None')
+                _log.error('_handle_cmd: else')
                 self._handle_cmd_new_session(msg)
                 if 'superjob' in msg:
                     self.tank_runner.set_super_job_id(msg['superjob'])
