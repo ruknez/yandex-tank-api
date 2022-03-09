@@ -150,13 +150,18 @@ class Manager(object):
         try:
             _log.error("_handle_cmd_new_session msg = %s", msg)
             print(msg)
+            if 'superjob' in msg:
+                _log.error("_handle_cmd_new_session superjob = %s", msg['superjob'])
+            else:
+                _log.error("_handle_cmd_new_session superjob NO")
             self.tank_runner = TankRunner(
                 cfg=self.cfg,
                 manager_queue=self.manager_queue,
                 session_id=msg['session'],
                 tank_config=msg['config'],
                 first_break=msg['break'],
-                super_job=msg['superjob'])
+                super_job="123"
+            )
         except KeyboardInterrupt:
             pass
         except Exception as ex:
