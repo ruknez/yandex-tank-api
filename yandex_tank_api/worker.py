@@ -61,7 +61,7 @@ class TankWorker(object):
 
     def __init__(
             self, tank_queue, manager_queue, working_dir, lock_dir, session_id,
-            ignore_machine_defaults, configs_location):
+            ignore_machine_defaults, configs_location, super_job):
 
         # Parameters from manager
         self.tank_queue = tank_queue
@@ -79,6 +79,7 @@ class TankWorker(object):
         self.done_stages = set()
         self.lock_dir = lock_dir
         self.lock = None
+        self.super_job_id = super_job
 
         print(lock_dir)
 
@@ -169,6 +170,8 @@ class TankWorker(object):
     def __preconfigure(self):
         """Logging and TankCore setup"""
         _log.error("__preconfigure")
+        _log.error("__preconfigure super_job %s", self.super_job_id)
+
         self.__setup_logging()
         self.core.load_plugins()
 
@@ -206,9 +209,6 @@ class TankWorker(object):
         while True:
             msg = self.tank_queue.get()
             # Check that there is a break in the message
-            if 'superjob' in msg:
-                _log.error("get_next_break  superjob id = %s", msg['superjob'])
-
             if 'break' not in msg:
                 _log.error(
                     'No break specified in the recieved message from manager')
@@ -347,7 +347,7 @@ def signal_handler(signum, _):
 
 def run(
         tank_queue, manager_queue, work_dir, lock_dir, session_id,
-        ignore_machine_defaults, configs_location):
+        ignore_machine_defaults, configs_location, super_job):
     """
     Target for tank process.
     This is the only function from this module ever used by Manager.
@@ -364,4 +364,4 @@ def run(
     signal.signal(signal.SIGTERM, signal_handler)
     TankWorker(
         tank_queue, manager_queue, work_dir, lock_dir, session_id,
-        ignore_machine_defaults, configs_location).perform_test()
+        ignore_machine_defaults, configs_location, super_job).perform_test()

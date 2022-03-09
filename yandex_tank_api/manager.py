@@ -25,7 +25,7 @@ class TankRunner(object):
     """
 
     def __init__(
-            self, cfg, manager_queue, session_id, tank_config, first_break):
+            self, cfg, manager_queue, session_id, tank_config, first_break, super_job):
         """
         Sets up working directory and tank queue
         Starts tank process
@@ -52,15 +52,12 @@ class TankRunner(object):
             target=yandex_tank_api.worker.run,
             args=(
                 self.tank_queue, manager_queue, work_dir, lock_dir, session_id,
-                ignore_machine_defaults, configs_location))
+                ignore_machine_defaults, configs_location, super_job))
         self.tank_process.start()
 
     def set_break(self, next_break):
         """Sends the next break to the tank process"""
         self.tank_queue.put({'break': next_break})
-
-    def set_super_job_id(self, super_job_id):
-        self.tank_queue.put({'superjob':super_job_id})
 
     def is_alive(self):
         """Check that the tank process didn't exit """
@@ -158,7 +155,8 @@ class Manager(object):
                 manager_queue=self.manager_queue,
                 session_id=msg['session'],
                 tank_config=msg['config'],
-                first_break=msg['break'])
+                first_break=msg['break'],
+                super_job=msg['superjob'])
         except KeyboardInterrupt:
             pass
         except Exception as ex:
