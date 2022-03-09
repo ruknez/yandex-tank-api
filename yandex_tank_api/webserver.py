@@ -150,7 +150,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         superjob_ID = self.get_argument('superjob', None)
         _log.error("superjob_ID = %s", superjob_ID)
 
-        print("superjob_ID = %s", superjob_ID)
         if superjob_ID is not None:
             os.environ['SUPERJOB_ID_test'] = superjob_ID
 
@@ -193,7 +192,7 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             return
 
         # Post run command to manager queue
-        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint, 'RunHandler': "get"})
+        self.srv.cmd({'session': session_id, 'cmd': 'run', 'break': breakpoint, 'RunHandler': "get", 'superjob': superjob_ID})
 
         self.srv.heartbeat(session_id, hb_timeout)
         self.reply_reason(200, 'Will try to set break before ' + breakpoint)
