@@ -101,10 +101,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         breakpoint = self.get_argument('break', 'finished')
         hb_timeout = self.get_argument('heartbeat', None)
         superjob_ID = self.get_argument('superjob', None)
-        _log.error("superjob_ID = %s", superjob_ID)
-
-        if superjob_ID is not None:
-            os.environ['SUPERJOB_ID_test'] = superjob_ID
 
         config = self.request.body
 

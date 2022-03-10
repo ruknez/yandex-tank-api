@@ -141,7 +141,6 @@ class Manager(object):
 
     def _handle_cmd_new_session(self, msg):
         """Start new session"""
-        _log.error("_handle_cmd_new_session")
         if 'session' not in msg or 'config' not in msg:
             # Internal protocol error
             _log.critical(
@@ -149,12 +148,7 @@ class Manager(object):
                 'both config and test should be present:%s\n', msg)
             return
         try:
-            _log.error("_handle_cmd_new_session msg = %s", msg)
             print(msg)
-            if 'superjob' in msg:
-                _log.error("_handle_cmd_new_session superjob = %s", msg['superjob'])
-            else:
-                _log.error("_handle_cmd_new_session superjob NO")
             self.tank_runner = TankRunner(
                 cfg=self.cfg,
                 manager_queue=self.manager_queue,
@@ -256,7 +250,7 @@ class Manager(object):
 
     def _handle_msg(self, msg):
         """Handle message from manager queue"""
-        _log.info('Recieved message LOLO:\n%s', msg)
+        _log.info('Recieved message:\n%s', msg)
         if 'cmd' in msg:
             # Recieved command from server
             self._handle_cmd(msg)
