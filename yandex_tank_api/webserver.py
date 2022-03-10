@@ -13,8 +13,6 @@ import uuid
 import multiprocessing
 import datetime
 import time
-import logging
-import logging.handlers
 import yaml
 import yandex_tank_api.common as common
 from retrying import retry
@@ -23,8 +21,6 @@ from yandextank.core.consoleworker import load_core_base_cfg, load_local_base_cf
 
 TRANSFER_SIZE_LIMIT = 128 * 1024
 DEFAULT_HEARTBEAT_TIMEOUT = 600
-
-_log = logging.getLogger(__name__)
 
 class APIHandler(tornado.web.RequestHandler):  # pylint: disable=R0904
     """
