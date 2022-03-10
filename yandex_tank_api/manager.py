@@ -47,13 +47,12 @@ class TankRunner(object):
         ignore_machine_defaults = cfg['ignore_machine_defaults']
         configs_location = cfg['configs_location']
 
-        _log.error("TankRunner __init__ super_job = %s", super_job)
         # Start tank process
         self.tank_process = multiprocessing.Process(
             target=yandex_tank_api.worker.run,
             args=(
                 self.tank_queue, manager_queue, work_dir, lock_dir, session_id,
-                ignore_machine_defaults, configs_location,super_job))
+                ignore_machine_defaults, configs_location, super_job))
         self.tank_process.start()
 
     def set_break(self, next_break):
@@ -127,7 +126,6 @@ class Manager(object):
 
     def _handle_cmd_set_break(self, msg):
         """New break for running session"""
-        _log.error('_handle_cmd_set_break')
         if msg['session'] != self.session_id:
             raise RuntimeError(
                 'Webserver requested to start session '
@@ -155,8 +153,7 @@ class Manager(object):
                 session_id=msg['session'],
                 tank_config=msg['config'],
                 first_break=msg['break'],
-                super_job=msg['superjob']
-            )
+                super_job=msg['superjob'])
         except KeyboardInterrupt:
             pass
         except Exception as ex:
@@ -171,7 +168,6 @@ class Manager(object):
 
     def _handle_cmd(self, msg):
         """Process command from webserver"""
-        _log.error("in _handle_cmd mess = %s", msg)
         if 'session' not in msg:
             _log.error('Bad command: session id not specified')
             return
@@ -182,10 +178,8 @@ class Manager(object):
             self._handle_cmd_stop(msg)
         elif cmd == 'run':
             if self.session_id is not None:
-                _log.error('_handle_cmd: elf.session_id is not None')
                 self._handle_cmd_set_break(msg)
             else:
-                _log.error('_handle_cmd: else')
                 self._handle_cmd_new_session(msg)
         else:
             _log.critical('Unknown command: %s', cmd)

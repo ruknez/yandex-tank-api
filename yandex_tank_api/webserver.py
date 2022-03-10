@@ -95,7 +95,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
     """
 
     def post(self):
-        _log.error("RunHandler post")
         offered_test_id = self.get_argument(
             'test', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
         breakpoint = self.get_argument('break', 'finished')
@@ -136,7 +135,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
             'session': session_id,
             'cmd': 'run',
             'break': breakpoint,
-            'RunHandler': "post",
             'config': config,
             'superjob': superjob_ID
         })
@@ -145,7 +143,6 @@ class RunHandler(APIHandler):  # pylint: disable=R0904
         self.reply_json(200, {'session': session_id})
 
     def get(self):
-        _log.error("RunHandler get")
         breakpoint = self.get_argument('break', 'finished')
         session_id = self.get_argument('session')
         hb_timeout = self.get_argument('heartbeat', None)

@@ -63,7 +63,6 @@ class TankWorker(object):
             self, tank_queue, manager_queue, working_dir, lock_dir, session_id,
             ignore_machine_defaults, configs_location, super_job):
 
-        _log.error("TankWorker __init__")
         # Parameters from manager
         self.tank_queue = tank_queue
         self.manager_queue = manager_queue
@@ -170,9 +169,6 @@ class TankWorker(object):
 
     def __preconfigure(self):
         """Logging and TankCore setup"""
-        _log.error("__preconfigure")
-        _log.error("__preconfigure super_job %s", self.super_job_id)
-
         self.__setup_logging()
         self.core.load_plugins(self.super_job_id)
 
@@ -360,7 +356,7 @@ def run(
         Write tank status there
 
     """
-    _log.error("worker run super_job = %s", super_job)
+
     os.chdir(work_dir)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
