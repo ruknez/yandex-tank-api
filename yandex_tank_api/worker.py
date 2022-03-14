@@ -170,7 +170,7 @@ class TankWorker(object):
     def __preconfigure(self):
         """Logging and TankCore setup"""
         self.__setup_logging()
-        self.core.load_plugins(self.super_job_id)
+        self.core.load_plugins(super_job_id=self.super_job_id)
 
     def __get_lock(self):
         """Get lock and remember that we succeded in getting lock"""
